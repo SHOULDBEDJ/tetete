@@ -1,0 +1,210 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+model Profile {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  password      String
+  fullName      String    @map("full_name")
+  email         String?
+  avatarUrl     String?   @map("avatar_url")
+  lastLoginAt   DateTime? @map("last_login_at")
+  status        UserStatus @default(Active)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  roles         UserRole[]
+  bookings      Booking[] @relation("CreatedBy")
+  expenses      Expense[] @relation("CreatedBy")
+  incomes       Income[]  @relation("CreatedBy")
+
+  @@map("profiles")
+}
+
+model UserRole {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  role        AppRole
+  permissions Json
+  createdAt   DateTime @default(now()) @map("created_at")
+  profile     Profile  @relation(fields: [userId], references: [id])
+
+  @@map("user_roles")
+}
+
+model Booking {
+  id              String        @id @default(uuid())
+  orderId         String        @default(uuid()) @map("order_id")
+  customerName    String        @map("customer_name")
+  mobile          String
+  bookingDate     DateTime      @map("booking_date")
+  slotId          String        @map("slot_id")
+  guests          Int           @default(1)
+  advancePaid     Float         @default(0) @map("advance_paid")
+  agreedTotal     Float         @default(0) @map("agreed_total")
+  discount        Float         @default(0)
+  idProofType     IdProofType?  @map("id_proof_type")
+  idProofNumber   String?       @map("id_proof_number")
+  notes           String?
+  status          BookingStatus @default(Pending)
+  createdBy       String?       @map("created_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  deletedAt       DateTime?     @map("deleted_at")
+  
+  slot            TimeSlot      @relation(fields: [slotId], references: [id])
+  creator         Profile?      @relation("CreatedBy", fields: [createdBy], references: [id])
+
+  @@map("bookings")
+}
+
+model TimeSlot {
+  id          String    @id @default(uuid())
+  name        String
+  startTime   String    @map("start_time")
+  endTime     String    @map("end_time")
+  isOvernight Boolean   @default(false) @map("is_overnight")
+  isDefault   Boolean   @default(false) @map("is_default")
+  color       String
+  createdAt   DateTime  @default(now()) @map("created_at")
+  deletedAt   DateTime? @map("deleted_at")
+  bookings    Booking[]
+  settings    Setting[]
+
+  @@map("time_slots")
+}
+
+model ExpenseType {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  createdAt DateTime  @default(now()) @map("created_at")
+  expenses  Expense[]
+
+  @@map("expense_types")
+}
+
+model Expense {
+  id          String      @id @default(uuid())
+  date        DateTime    @default(now())
+  typeId      String      @map("type_id")
+  amount      Float
+  vendor      String?
+  description String?
+  paymentMode PaymentMode @default(Cash) @map("payment_mode")
+  reference   String?
+  createdBy   String?     @map("created_by")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  deletedAt   DateTime?   @map("deleted_at")
+
+  type        ExpenseType @relation(fields: [typeId], references: [id])
+  creator     Profile?    @relation("CreatedBy", fields: [createdBy], references: [id])
+
+  @@map("expenses")
+}
+
+model IncomeType {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  incomes   Income[]
+
+  @@map("income_types")
+}
+
+model Income {
+  id          String      @id @default(uuid())
+  date        DateTime    @default(now())
+  typeId      String      @map("type_id")
+  amount      Float
+  description String?
+  paymentMode PaymentMode @default(Cash) @map("payment_mode")
+  reference   String?
+  createdBy   String?     @map("created_by")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  deletedAt   DateTime?   @map("deleted_at")
+
+  type        IncomeType @relation(fields: [typeId], references: [id])
+  creator     Profile?   @relation("CreatedBy", fields: [createdBy], references: [id])
+
+  @@map("incomes")
+}
+
+model Setting {
+  id                  Int       @id @default(1)
+  farmhouseName       String    @default("16 Eyes Farm House") @map("farmhouse_name")
+  address             String?
+  phone               String?
+  email               String?
+  logoUrl             String?   @map("logo_url")
+  taxPercent          Float?    @default(0) @map("tax_percent")
+  gstNumber           String?   @map("gst_number")
+  businessName        String?   @map("business_name")
+  businessAddress     String?   @map("business_address")
+  businessPhone       String?   @map("business_phone")
+  businessEmail       String?   @map("business_email")
+  defaultSlotId       String?   @map("default_slot_id")
+  defaultBookingNotes String?   @map("default_booking_notes")
+  notifyBookings      Boolean   @default(true) @map("notify_bookings")
+  notifyPayments      Boolean   @default(true) @map("notify_payments")
+  notifyDailySummary  Boolean   @default(true) @map("notify_daily_summary")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  defaultSlot         TimeSlot? @relation(fields: [defaultSlotId], references: [id])
+
+  @@map("settings")
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  module    String
+  action    String
+  detail    String?
+  userId    String?  @map("user_id")
+  username  String?
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("activity_log")
+}
+
+enum AppRole {
+  SuperAdmin
+  Admin
+  Staff
+}
+
+enum BookingStatus {
+  Confirmed
+  Pending
+  Cancelled
+}
+
+enum IdProofType {
+  Aadhaar
+  PAN
+  Passport
+  DL
+  VoterID
+}
+
+enum PaymentMode {
+  UPI
+  Cash
+  Cheque
+  BankTransfer
+  Other
+}
+
+enum UserStatus {
+  Active
+  Inactive
+  Suspended
+}
