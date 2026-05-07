@@ -50,8 +50,7 @@ export const createBooking = async (req: Request, res: Response) => {
 };
 
 export const updateBooking = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  try {
+  const { id } = req.params; try {
     const data = bookingSchema.partial().parse(req.body);
     const booking = await prisma.booking.update({
       where: { id },
